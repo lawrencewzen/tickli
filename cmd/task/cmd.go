@@ -46,12 +46,10 @@ specify a different project with the --project-id flag.`,
 
 	cmd.AddCommand(
 		newCompleteCmd(&client),
-		newDeleteCommand(&client),
 		newShowCommand(&client),
 		newCreateCommand(&client),
 		newListCommand(&client),
 		newUncompleteCommand(&client),
-		newUpdateCommand(&client),
 	)
 
 	RegisterProjectOverride(cmd)

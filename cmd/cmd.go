@@ -5,7 +5,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/sho0pi/tickli/cmd/project"
-	"github.com/sho0pi/tickli/cmd/subtask"
 	"github.com/sho0pi/tickli/cmd/task"
 	"github.com/spf13/cobra"
 	"os"
@@ -27,7 +26,6 @@ Complete documentation is available at https://github.com/sho0pi/tickli`,
 		NewVersionCommand(),
 		task.NewTaskCommand(),
 		project.NewProjectCommand(),
-		subtask.NewSubtaskCommand(),
 	)
 
 	return cmd
