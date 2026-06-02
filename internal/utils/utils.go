@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"github.com/ktr0731/go-fuzzyfinder"
 	"github.com/sho0pi/tickli/internal/types"
 	"github.com/sho0pi/tickli/internal/types/project"
 )
@@ -71,57 +70,4 @@ Tasks:`,
 	)
 
 	return description
-}
-
-func FuzzySelectProject(projects []types.Project, query string) (types.Project, error) {
-	if len(projects) == 0 {
-		return types.Project{}, fmt.Errorf("no projects available for selection")
-	}
-	idx, err := fuzzyfinder.Find(
-		projects,
-		func(i int) string {
-			return fmt.Sprintf("%s (%s)",
-				projects[i].Name,
-				projects[i].ID,
-			)
-		},
-		fuzzyfinder.WithQuery(query),
-		fuzzyfinder.WithPreviewWindow(func(i, w, h int) string {
-			if i == -1 {
-				return ""
-			}
-			return GetProjectDescription(projects[i])
-		}),
-		fuzzyfinder.WithPromptString("Search Project: "),
-	)
-	if err != nil {
-		return types.Project{}, err
-	}
-
-	return projects[idx], nil
-}
-
-func FuzzySelectTask(tasks []types.Task, projectColor project.Color, query string) (types.Task, error) {
-	idx, err := fuzzyfinder.Find(
-		tasks,
-		func(i int) string {
-			return fmt.Sprintf("%s (%s)",
-				tasks[i].Title,
-				tasks[i].ID,
-			)
-		},
-		fuzzyfinder.WithQuery(query),
-		fuzzyfinder.WithPreviewWindow(func(i, w, h int) string {
-			if i == -1 {
-				return ""
-			}
-			return GetTaskDescription(tasks[i], projectColor)
-		}),
-		fuzzyfinder.WithPromptString("Search Project: "),
-	)
-	if err != nil {
-		return types.Task{}, err
-	}
-
-	return tasks[idx], nil
 }

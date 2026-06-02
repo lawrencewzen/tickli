@@ -2,12 +2,14 @@ package project
 
 import (
 	"fmt"
+	"os"
+	"strings"
+	"text/tabwriter"
+
 	"github.com/pkg/errors"
 	"github.com/sho0pi/tickli/internal/api"
 	"github.com/sho0pi/tickli/internal/types"
-	"github.com/sho0pi/tickli/internal/utils"
 	"github.com/spf13/cobra"
-	"strings"
 )
 
 type listOptions struct {
@@ -33,34 +35,41 @@ func newListCommand(client *api.Client) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
-		Short:   "List and select from available projects",
-		Long: `Display all available projects and allow selection of one.
+		Short:   "List available projects",
+		Long: `Print all available projects, one per line, optionally filtered by name.
 
-This command shows all projects matching the optional filter criteria,
-then displays a fuzzy-search selector to choose a project.`,
+The output is plain text (ID and name columns) so it can be piped into other
+commands or scripts.`,
 		Example: `  # List all projects
   tickli project list
-  
+
   # Filter projects by name
   tickli project list -f "work"`,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projects, err := client.ListProjects()
 			if err != nil {
 				return errors.Wrap(err, "failed to fetch projects")
 			}
 
-			projects, err = filterProjectByName(projects, opts.filter)
-			if err != nil {
-				return err
+			if opts.filter != "" {
+				projects, err = filterProjectByName(projects, opts.filter)
+				if err != nil {
+					return err
+				}
 			}
 
-			project, err := utils.FuzzySelectProject(projects, "")
-			if err != nil {
-				return errors.Wrap(err, "failed to select project")
+			if len(projects) == 0 {
+				fmt.Println("No projects found.")
+				return nil
 			}
 
-			fmt.Println(fmt.Sprintf("(%s) %s", project.ID, project.Name))
-			return nil
+			w := tabwriter.NewWriter(os.Stdout, 0, 2, 2, ' ', 0)
+			fmt.Fprintln(w, "ID\tNAME")
+			for i := range projects {
+				fmt.Fprintf(w, "%s\t%s\n", projects[i].ID, projects[i].Name)
+			}
+			return w.Flush()
 		},
 	}
 

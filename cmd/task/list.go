@@ -1,16 +1,16 @@
 package task
 
 import (
-	"context"
 	"fmt"
-	"github.com/rs/zerolog/log"
+	"os"
+	"slices"
+	"text/tabwriter"
+
+	"github.com/pkg/errors"
 	"github.com/sho0pi/tickli/internal/api"
 	"github.com/sho0pi/tickli/internal/types"
-	"github.com/sho0pi/tickli/internal/types/project"
 	"github.com/sho0pi/tickli/internal/types/task"
-	"github.com/sho0pi/tickli/internal/utils"
 	"github.com/spf13/cobra"
-	"slices"
 )
 
 type listOptions struct {
@@ -20,66 +20,6 @@ type listOptions struct {
 	dueDate   string
 	tag       string
 	projectID string
-}
-
-func fetchProjectColor(client *api.Client, projectID string) project.Color {
-	p, err := client.GetProject(projectID)
-	if err != nil {
-		log.Warn().Err(err).Msg("failed to get p color, using default color")
-		return project.DefaultColor
-	}
-	return p.Color
-}
-
-func fetchProjectColorAsync(ctx context.Context, client *api.Client, projectID string) <-chan project.Color {
-	colorChan := make(chan project.Color, 1)
-
-	go func() {
-		defer close(colorChan)
-
-		select {
-		case <-ctx.Done():
-			return
-		case colorChan <- fetchProjectColor(client, projectID):
-		}
-	}()
-
-	return colorChan
-}
-
-type taskFilterResult struct {
-	tasks []types.Task
-	err   error
-}
-
-func fetchAndFilterTasksAsync(ctx context.Context, client *api.Client, projectID string, opts *listOptions) <-chan taskFilterResult {
-	resultChan := make(chan taskFilterResult, 1)
-
-	go func() {
-		defer close(resultChan)
-
-		// Fetch tasks
-		tasks, err := client.ListTasks(projectID)
-		if err != nil {
-			select {
-			case <-ctx.Done():
-				return
-			case resultChan <- taskFilterResult{err: err}:
-				return
-			}
-		}
-
-		// Apply filters
-		filteredTasks := filterTasks(tasks, opts)
-
-		select {
-		case <-ctx.Done():
-			return
-		case resultChan <- taskFilterResult{filteredTasks, nil}:
-		}
-	}()
-
-	return resultChan
 }
 
 func filterTasks(tasks []types.Task, opts *listOptions) []types.Task {
@@ -116,67 +56,46 @@ func newListCommand(client *api.Client) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
-		Short:   "Browse and select from available tasks",
-		Long: `Display tasks in the current project or a specified project.
-    
+		Short:   "List tasks in a project",
+		Long: `Print tasks in the current project or a specified project, one per line.
+
 By default, only shows incomplete tasks. You can filter tasks by priority,
-tags, and due date. Results are displayed in an interactive selector.`,
+tags, and due date. The output is plain text so it can be piped into other
+commands or scripts.`,
 		Example: `  # List all incomplete tasks in current project
   tickli task list
-  
+
   # List all tasks including completed ones
   tickli task list --all
-  
+
   # List tasks with specific tag
   tickli task list -t important
-  
+
   # List high priority tasks
   tickli task list -p high
-  
+
   # List tasks in specific project
   tickli task list --project-id abc123def456`,
 		Args: cobra.NoArgs,
-		PreRun: func(cmd *cobra.Command, args []string) {
-			opts.projectID = projectID
-		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
-			colorChan := fetchProjectColorAsync(ctx, client, projectID)
-			taskChan := fetchAndFilterTasksAsync(ctx, client, projectID, opts)
-
-			// Wait for both operations to complete
-			var projectColor project.Color
-			var filteredTasks []types.Task
-
-			// Get the task results
-			taskResult := <-taskChan
-			if taskResult.err != nil {
-				cancel() // Cancel the color fetching if task fetching failed
-				return taskResult.err
-			}
-			filteredTasks = taskResult.tasks
-
-			// Get the project color
-			select {
-			case <-ctx.Done():
-				projectColor = project.DefaultColor
-			case color, ok := <-colorChan:
-				if !ok {
-					projectColor = project.DefaultColor
-				} else {
-					projectColor = color
-				}
-			}
-
-			t, err := utils.FuzzySelectTask(filteredTasks, projectColor, "")
+			tasks, err := client.ListTasks(projectID)
 			if err != nil {
-				log.Fatal().Err(err).Msg("failed to select task")
+				return errors.Wrap(err, "failed to fetch tasks")
 			}
 
-			fmt.Println(utils.GetTaskDescription(t, projectColor))
-			return nil
+			filteredTasks := filterTasks(tasks, opts)
+			if len(filteredTasks) == 0 {
+				fmt.Println("No tasks found.")
+				return nil
+			}
+
+			w := tabwriter.NewWriter(os.Stdout, 0, 2, 2, ' ', 0)
+			fmt.Fprintln(w, "ID\tPRIORITY\tSTATUS\tTITLE")
+			for i := range filteredTasks {
+				t := filteredTasks[i]
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", t.ID, t.Priority.String(), t.Status.String(), t.Title)
+			}
+			return w.Flush()
 		},
 	}
 	cmd.Flags().BoolVarP(&opts.all, "all", "a", false, "Include completed tasks in the results")
@@ -188,6 +107,7 @@ tags, and due date. Results are displayed in an interactive selector.`,
 
 	return cmd
 }
+
 func Filter(tasks []types.Task, predicate func(task types.Task) bool) []types.Task {
 	var result []types.Task
 	for _, t := range tasks {
