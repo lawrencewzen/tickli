@@ -49,7 +49,6 @@ specify a different project with the --project-id flag.`,
 		newShowCommand(&client),
 		newCreateCommand(&client),
 		newListCommand(&client),
-		newUncompleteCommand(&client),
 	)
 
 	RegisterProjectOverride(cmd)

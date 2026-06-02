@@ -1,6 +1,7 @@
 package task
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"slices"
@@ -20,6 +21,7 @@ type listOptions struct {
 	dueDate   string
 	tag       string
 	projectID string
+	output    types.OutputFormat
 }
 
 func filterTasks(tasks []types.Task, opts *listOptions) []types.Task {
@@ -52,7 +54,7 @@ func filterTasks(tasks []types.Task, opts *listOptions) []types.Task {
 }
 
 func newListCommand(client *api.Client) *cobra.Command {
-	opts := &listOptions{}
+	opts := &listOptions{output: types.OutputSimple}
 	cmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
@@ -84,6 +86,19 @@ commands or scripts.`,
 			}
 
 			filteredTasks := filterTasks(tasks, opts)
+
+			if opts.output == types.OutputJSON {
+				if filteredTasks == nil {
+					filteredTasks = []types.Task{}
+				}
+				data, err := json.MarshalIndent(filteredTasks, "", "  ")
+				if err != nil {
+					return errors.Wrap(err, "failed to marshal tasks")
+				}
+				fmt.Println(string(data))
+				return nil
+			}
+
 			if len(filteredTasks) == 0 {
 				fmt.Println("No tasks found.")
 				return nil
@@ -104,6 +119,8 @@ commands or scripts.`,
 	_ = cmd.RegisterFlagCompletionFunc("priority", task.PriorityCompletionFunc)
 	cmd.Flags().StringVar(&opts.dueDate, "due", "", "Filter by due date (today, tomorrow, this-week, overdue)")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "Show more details for each task in the list")
+	cmd.Flags().VarP(&opts.output, "output", "o", "Display format: simple (human-readable) or json (machine-readable)")
+	_ = cmd.RegisterFlagCompletionFunc("output", types.OutputFormatCompletionFunc)
 
 	return cmd
 }

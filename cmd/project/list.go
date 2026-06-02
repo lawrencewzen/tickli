@@ -1,6 +1,7 @@
 package project
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -14,6 +15,7 @@ import (
 
 type listOptions struct {
 	filter string
+	output types.OutputFormat
 }
 
 func filterProjectByName(projects []types.Project, name string) ([]types.Project, error) {
@@ -31,7 +33,7 @@ func filterProjectByName(projects []types.Project, name string) ([]types.Project
 }
 
 func newListCommand(client *api.Client) *cobra.Command {
-	opts := &listOptions{}
+	opts := &listOptions{output: types.OutputSimple}
 	cmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
@@ -59,6 +61,18 @@ commands or scripts.`,
 				}
 			}
 
+			if opts.output == types.OutputJSON {
+				if projects == nil {
+					projects = []types.Project{}
+				}
+				data, err := json.MarshalIndent(projects, "", "  ")
+				if err != nil {
+					return errors.Wrap(err, "failed to marshal projects")
+				}
+				fmt.Println(string(data))
+				return nil
+			}
+
 			if len(projects) == 0 {
 				fmt.Println("No projects found.")
 				return nil
@@ -74,6 +88,8 @@ commands or scripts.`,
 	}
 
 	cmd.Flags().StringVarP(&opts.filter, "filter", "f", "", "Only show projects with names containing the provided text")
+	cmd.Flags().VarP(&opts.output, "output", "o", "Display format: simple (human-readable) or json (machine-readable)")
+	_ = cmd.RegisterFlagCompletionFunc("output", types.OutputFormatCompletionFunc)
 
 	return cmd
 }
