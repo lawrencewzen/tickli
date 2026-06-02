@@ -26,5 +26,8 @@ go.work.sum
 
 .idea/
 
-tickli# Added by goreleaser init:
+# Compiled binary
+tickli
+
+# Added by goreleaser init:
 dist/
