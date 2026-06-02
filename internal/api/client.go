@@ -33,7 +33,14 @@ func GetAuthURL(clientID string) string {
 		authURL, scope, clientID, redirectURL)
 }
 
-func GetAccessToken(clientID, clientSecret, code string) (string, error) {
+type TokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	ExpiresIn    int    `json:"expires_in"`
+	TokenType    string `json:"token_type"`
+}
+
+func GetAccessToken(clientID, clientSecret, code string) (*TokenResponse, error) {
 	client := resty.New()
 
 	resp, err := client.R().
@@ -47,17 +54,43 @@ func GetAccessToken(clientID, clientSecret, code string) (string, error) {
 		Post(tokenURL)
 
 	if err != nil {
-		return "", errors.Wrap(err, "requesting access token")
+		return nil, errors.Wrap(err, "requesting access token")
 	}
 
-	var result struct {
-		AccessToken string `json:"access_token"`
-	}
+	var result TokenResponse
 	if err := json.Unmarshal(resp.Body(), &result); err != nil {
-		return "", errors.Wrap(err, "parsing response")
+		return nil, errors.Wrap(err, "parsing response")
 	}
 
-	return result.AccessToken, nil
+	return &result, nil
+}
+
+func RefreshAccessToken(clientID, clientSecret, refreshToken string) (*TokenResponse, error) {
+	client := resty.New()
+
+	resp, err := client.R().
+		SetBasicAuth(clientID, clientSecret).
+		SetHeader("Content-Type", "application/x-www-form-urlencoded").
+		SetFormData(map[string]string{
+			"grant_type":    "refresh_token",
+			"refresh_token": refreshToken,
+		}).
+		Post(tokenURL)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "refreshing access token")
+	}
+
+	if resp.IsError() {
+		return nil, fmt.Errorf("refresh token rejected (status %d): %s", resp.StatusCode(), resp.String())
+	}
+
+	var result TokenResponse
+	if err := json.Unmarshal(resp.Body(), &result); err != nil {
+		return nil, errors.Wrap(err, "parsing refresh response")
+	}
+
+	return &result, nil
 }
 
 func (c *Client) ListProjects() ([]types.Project, error) {

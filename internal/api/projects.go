@@ -6,10 +6,13 @@ import (
 )
 
 func GetClient() (*Client, error) {
-	token, err := config.LoadToken()
+	td, err := config.LoadTokenData()
 	if err != nil {
-		return nil, fmt.Errorf("falied to load token: %w", err)
+		return nil, fmt.Errorf("failed to load token: %w", err)
+	}
+	if td == nil || td.AccessToken == "" {
+		return nil, fmt.Errorf("no token found, please run 'tickli init' first")
 	}
 
-	return NewClient(token), nil
+	return NewClient(td.AccessToken), nil
 }

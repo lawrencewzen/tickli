@@ -2,12 +2,13 @@ package cmd
 
 import (
 	"fmt"
+	"net/http"
+	"os"
+	"time"
+
 	"github.com/joho/godotenv"
 	"github.com/pkg/browser"
 	"github.com/pkg/errors"
-	"net/http"
-	"os"
-
 	"github.com/rs/zerolog/log"
 	"github.com/sho0pi/tickli/internal/api"
 	"github.com/sho0pi/tickli/internal/config"
@@ -54,9 +55,9 @@ func NewInitCommand() *cobra.Command {
 This will open your browser for authentication and store the access token securely.`,
 		PreRun: func(cmd *cobra.Command, args []string) {
 			fmt.Println(logo)
-			if token, err := config.LoadToken(); err != nil {
+			if td, err := config.LoadTokenData(); err != nil {
 				log.Fatal().Err(err).Msg("failed to check existing token")
-			} else if token != "" {
+			} else if td != nil && td.AccessToken != "" {
 				log.Fatal().Msg("tickli is already initialized. Used 'tickli reset' to reinitialize")
 			}
 		},
@@ -113,14 +114,24 @@ func initTickli() (string, error) {
 
 	// Get access token
 	authCode := <-code
-	token, err := api.GetAccessToken(clientID, clientSecret, authCode)
+	tokenResp, err := api.GetAccessToken(clientID, clientSecret, authCode)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to get access token")
 	}
 
-	if err := config.SaveToken(token); err != nil {
+	td := &config.TokenData{
+		AccessToken:  tokenResp.AccessToken,
+		RefreshToken: tokenResp.RefreshToken,
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+	}
+	if tokenResp.ExpiresIn > 0 {
+		td.ExpiresAt = time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
+	}
+
+	if err := config.SaveTokenData(td); err != nil {
 		return "", errors.Wrap(err, "failed to save token")
 	}
 
-	return token, nil
+	return tokenResp.AccessToken, nil
 }

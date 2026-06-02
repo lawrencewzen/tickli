@@ -12,12 +12,12 @@ type ProjectsProvider interface {
 }
 
 func loadClient() (*api.Client, error) {
-	token, err := config.LoadToken()
-	if err != nil || token == "" {
+	td, err := config.LoadTokenData()
+	if err != nil || td == nil || td.AccessToken == "" {
 		return nil, err
 	}
 
-	client := api.NewClient(token)
+	client := api.NewClient(td.AccessToken)
 	return client, nil
 }
 

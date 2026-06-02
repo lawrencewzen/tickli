@@ -1,17 +1,27 @@
 package config
 
 import (
-	"github.com/adrg/xdg"
-	"github.com/spf13/viper"
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"time"
 
+	"github.com/adrg/xdg"
 	"github.com/pkg/errors"
+	"github.com/spf13/viper"
 )
 
 type Config struct {
 	DefaultProjectID    string `mapstructure:"default_project_id"`
 	DefaultProjectColor string `mapstructure:"default_project_color"`
+}
+
+type TokenData struct {
+	AccessToken  string    `json:"access_token"`
+	RefreshToken string    `json:"refresh_token"`
+	ExpiresAt    time.Time `json:"expires_at"`
+	ClientID     string    `json:"client_id"`
+	ClientSecret string    `json:"client_secret"`
 }
 
 var (
@@ -62,24 +72,35 @@ func Save(cfg *Config) error {
 	return viper.WriteConfigAs(configPath)
 }
 
-func LoadToken() (string, error) {
+func LoadTokenData() (*TokenData, error) {
 	data, err := os.ReadFile(tokenPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return "", nil
+			return nil, nil
 		}
-		return "", err
+		return nil, err
 	}
 
-	return string(data), nil
+	var td TokenData
+	if err := json.Unmarshal(data, &td); err == nil {
+		return &td, nil
+	}
+
+	// backward compat: raw string token
+	return &TokenData{AccessToken: string(data)}, nil
 }
 
-func SaveToken(token string) error {
+func SaveTokenData(td *TokenData) error {
 	if err := os.MkdirAll(filepath.Dir(tokenPath), 0700); err != nil {
 		return errors.Wrap(err, "creating token directory")
 	}
 
-	return os.WriteFile(tokenPath, []byte(token), 0600)
+	data, err := json.Marshal(td)
+	if err != nil {
+		return errors.Wrap(err, "marshaling token data")
+	}
+
+	return os.WriteFile(tokenPath, data, 0600)
 }
 
 func DeleteToken() error {
