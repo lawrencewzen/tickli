@@ -11,10 +11,12 @@ import (
 const (
 	baseURL     = "https://api.ticktick.com/open/v1"
 	authURL     = "https://ticktick.com/oauth/authorize"
-	tokenURL    = "https://ticktick.com/oauth/token"
 	scope       = "tasks:write tasks:read"
 	redirectURL = "http://localhost:8080"
 )
+
+// tokenURL is a var (not const) so tests can point it at a mock server.
+var tokenURL = "https://ticktick.com/oauth/token"
 
 type Client struct {
 	http *resty.Client

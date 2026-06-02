@@ -18,8 +18,7 @@ func LoadClient() api.Client {
 	}
 
 	// Refresh if token expires within 5 minutes and we have credentials for it
-	if td.RefreshToken != "" && td.ClientID != "" && !td.ExpiresAt.IsZero() &&
-		time.Now().After(td.ExpiresAt.Add(-5*time.Minute)) {
+	if shouldRefresh(td, time.Now()) {
 		log.Info().Msg("Access token expiring, refreshing...")
 		refreshed, err := api.RefreshAccessToken(td.ClientID, td.ClientSecret, td.RefreshToken)
 		if err != nil {
@@ -38,4 +37,17 @@ func LoadClient() api.Client {
 	}
 
 	return *api.NewClient(td.AccessToken)
+}
+
+// refreshThreshold is how long before expiry a token is considered stale.
+const refreshThreshold = 5 * time.Minute
+
+// shouldRefresh reports whether the access token should be refreshed at the
+// given time. It requires a refresh token, a client id, and a known expiry,
+// and returns true once the token is within refreshThreshold of expiring.
+func shouldRefresh(td *config.TokenData, now time.Time) bool {
+	if td.RefreshToken == "" || td.ClientID == "" || td.ExpiresAt.IsZero() {
+		return false
+	}
+	return now.After(td.ExpiresAt.Add(-refreshThreshold))
 }
