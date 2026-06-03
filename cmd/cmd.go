@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/sho0pi/tickli/cmd/project"
@@ -46,7 +45,6 @@ func Execute() {
 	})
 
 	if err := cmd.Execute(); err != nil {
-		fmt.Println(err)
 		log.Fatal().Err(err).Msg("Failed to execute command")
 	}
 }

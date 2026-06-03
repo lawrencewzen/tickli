@@ -52,7 +52,7 @@ You can choose between human-readable output or machine-readable JSON.`,
 			}
 			if task.ID != opts.taskID {
 				log.Warn().Str("task-id", opts.taskID).Str("project-id", opts.projectID).Msg("task not found")
-				return fmt.Errorf("task %s not found for porject %s", opts.taskID, opts.projectID)
+				return fmt.Errorf("task %s not found for project %s", opts.taskID, opts.projectID)
 			}
 			switch opts.output {
 			case types.OutputSimple:

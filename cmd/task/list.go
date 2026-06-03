@@ -15,10 +15,7 @@ import (
 )
 
 type listOptions struct {
-	all       bool
-	verbose   bool
 	priority  task.Priority
-	dueDate   string
 	tag       string
 	projectID string
 	output    types.OutputFormat
@@ -38,18 +35,6 @@ func filterTasks(tasks []types.Task, opts *listOptions) []types.Task {
 		return true
 	})
 
-	// Filter by completion status
-	if !opts.all {
-		//	tasks = Filter(tasks, func(t types.Task) bool {
-		//		return !t.
-		//	})
-	}
-
-	// TODO: implement due date filtering
-	if opts.dueDate != "" {
-		// Future implementation
-	}
-
 	return tasks
 }
 
@@ -61,14 +46,10 @@ func newListCommand(client *api.Client) *cobra.Command {
 		Short:   "List tasks in a project",
 		Long: `Print tasks in the current project or a specified project, one per line.
 
-By default, only shows incomplete tasks. You can filter tasks by priority,
-tags, and due date. The output is plain text so it can be piped into other
-commands or scripts.`,
-		Example: `  # List all incomplete tasks in current project
+You can filter tasks by priority and tag. The output is plain text (or JSON
+with -o json) so it can be piped into other commands or scripts.`,
+		Example: `  # List tasks in current project
   tickli task list
-
-  # List all tasks including completed ones
-  tickli task list --all
 
   # List tasks with specific tag
   tickli task list -t important
@@ -113,12 +94,9 @@ commands or scripts.`,
 			return w.Flush()
 		},
 	}
-	cmd.Flags().BoolVarP(&opts.all, "all", "a", false, "Include completed tasks in the results")
 	cmd.Flags().StringVarP(&opts.tag, "tag", "t", "", "Only show tasks with this specific tag")
 	cmd.Flags().VarP(&opts.priority, "priority", "p", "Only show tasks with this priority level or higher")
 	_ = cmd.RegisterFlagCompletionFunc("priority", task.PriorityCompletionFunc)
-	cmd.Flags().StringVar(&opts.dueDate, "due", "", "Filter by due date (today, tomorrow, this-week, overdue)")
-	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "Show more details for each task in the list")
 	cmd.Flags().VarP(&opts.output, "output", "o", "Display format: simple (human-readable) or json (machine-readable)")
 	_ = cmd.RegisterFlagCompletionFunc("output", types.OutputFormatCompletionFunc)
 

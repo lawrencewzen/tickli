@@ -25,13 +25,6 @@ type createOptions struct {
 	dueDate   string
 	timeZone  string
 
-	// reminders and repeat are more advanced features not implemented yet
-	reminders []string
-	repeat    string
-
-	// interactive indicates if you should prompt to get title and content
-	interactive bool
-
 	projectID string
 }
 
@@ -44,7 +37,7 @@ func newCreateCommand(client *api.Client) *cobra.Command {
 		Long: `Create a new task in the current project or a specified project.
     
 You can set various properties including title, content, priority, due date,
-and tags. At minimum, a title is required unless using interactive mode.`,
+and tags. At minimum, a title is required.`,
 		Example: `  # Create a basic task with just a title
   tickli task create -t "Buy groceries"
   
@@ -55,10 +48,7 @@ and tags. At minimum, a title is required unless using interactive mode.`,
   tickli task create -t "Call client" --project-id abc123def456
   
   # Create a task with content and tags
-  tickli task create -t "Team meeting" -c "Discuss Q3 roadmap" --tags meeting,work
-  
-  # Create a task interactively
-  tickli task create -i`,
+  tickli task create -t "Team meeting" -c "Discuss Q3 roadmap" --tags meeting,work`,
 		Args: cobra.NoArgs,
 		PreRun: func(cmd *cobra.Command, args []string) {
 			opts.projectID = projectID
@@ -129,12 +119,9 @@ and tags. At minimum, a title is required unless using interactive mode.`,
 	cmd.MarkFlagsMutuallyExclusive("date", "due")
 
 	cmd.Flags().StringVar(&opts.timeZone, "tz", "", "Timezone for date calculations (e.g., 'America/Los_Angeles')")
-	cmd.Flags().StringSliceVar(&opts.reminders, "reminders", []string{}, "List of reminder triggers (e.g., '9h', '0s')")
 	cmd.Flags().StringSliceVar(&opts.tags, "tags", []string{}, "Apply tags to categorize the task (comma-separated)")
-	cmd.Flags().StringVar(&opts.repeat, "repeat", "", "Recurring rule (e.g., 'daily', 'weekly on monday')")
 	cmd.Flags().VarP(&opts.priority, "priority", "p", "Task importance: none, low, medium, high (default: none)")
 	_ = cmd.RegisterFlagCompletionFunc("priority", task.PriorityCompletionFunc)
-	cmd.Flags().BoolVarP(&opts.interactive, "interactive", "i", false, "Create task by answering prompts")
 
 	return cmd
 }

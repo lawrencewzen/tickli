@@ -13,8 +13,6 @@ var InboxProject = Project{
 	ViewMode:  project.ViewModeList,
 }
 
-var NullProject = Project{}
-
 type Project struct {
 	ID         string           `json:"id"`
 	Name       string           `json:"name"`
@@ -25,17 +23,4 @@ type Project struct {
 	ViewMode   project.ViewMode `json:"viewMode"`
 	Permission string           `json:"permission"`
 	Kind       project.Kind     `json:"kind"`
-}
-
-type ProjectData struct {
-	Project Project  `json:"project"`
-	Tasks   []Task   `json:"tasks"`
-	Columns []Column `json:"columns"`
-}
-
-type Column struct {
-	ID        string `json:"id"`
-	ProjectID string `json:"projectId"`
-	Name      string `json:"name"`
-	SortOrder int64  `json:"sortOrder"`
 }
