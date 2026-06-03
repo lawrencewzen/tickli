@@ -49,6 +49,8 @@ specify a different project with the --project-id flag.`,
 		newShowCommand(&client),
 		newCreateCommand(&client),
 		newListCommand(&client),
+		newUpdateCommand(&client),
+		newDeleteCommand(&client),
 	)
 
 	RegisterProjectOverride(cmd)

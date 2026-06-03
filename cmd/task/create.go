@@ -6,9 +6,7 @@ import (
 	"github.com/sho0pi/tickli/internal/api"
 	"github.com/sho0pi/tickli/internal/types"
 	"github.com/sho0pi/tickli/internal/types/task"
-	"github.com/sho0pi/tickli/internal/utils"
 	"github.com/spf13/cobra"
-	"time"
 )
 
 type createOptions struct {
@@ -64,34 +62,8 @@ and tags. At minimum, a title is required.`,
 				Tags:     opts.tags,
 			}
 
-			if opts.date != "" {
-				r, err := utils.ParseTimeExpression(opts.date)
-				if err != nil {
-					return errors.Wrap(err, "failed to parse date range")
-				}
-				t.StartDate = types.TickTickTime(r.Start())
-				t.DueDate = types.TickTickTime(r.End())
-				t.IsAllDay = r.IsAllDay()
-			}
-			if opts.startDate != "" {
-				startDate, err := time.Parse(time.RFC3339, opts.startDate)
-				if err != nil {
-					return errors.Wrap(err, "failed to parse start date")
-				}
-				t.StartDate = types.TickTickTime(startDate)
-			}
-			if opts.dueDate != "" {
-				dueDate, err := time.Parse(time.RFC3339, opts.dueDate)
-				if err != nil {
-					return errors.Wrap(err, "failed to parse due date")
-				}
-				t.DueDate = types.TickTickTime(dueDate)
-			}
-			if opts.timeZone != "" {
-				t.TimeZone = opts.timeZone
-			}
-			if cmd.Flags().Changed("all-day") {
-				t.IsAllDay = opts.allDay
+			if err := applyDateFields(t, opts.date, opts.startDate, opts.dueDate, opts.timeZone, opts.allDay, cmd.Flags().Changed("all-day")); err != nil {
+				return err
 			}
 
 			t, err := client.CreateTask(t)

@@ -170,6 +170,40 @@ func (c *Client) CreateTask(task *types.Task) (*types.Task, error) {
 	return task, nil
 }
 
+func (c *Client) UpdateTask(task *types.Task) (*types.Task, error) {
+	if task == nil {
+		return nil, errors.New("task cannot be nil")
+	}
+
+	resp, err := c.http.R().
+		SetBody(task).
+		SetResult(task).
+		Post(fmt.Sprintf("/task/%s", task.ID))
+
+	if err != nil {
+		return nil, errors.Wrap(err, "updating task")
+	}
+	if resp.IsError() {
+		return nil, fmt.Errorf("failed to update task: %s", resp.String())
+	}
+
+	return task, nil
+}
+
+func (c *Client) DeleteTask(projectID, taskID string) error {
+	resp, err := c.http.R().
+		Delete(fmt.Sprintf("/project/%s/task/%s", projectID, taskID))
+
+	if err != nil {
+		return errors.Wrap(err, "deleting task")
+	}
+	if resp.IsError() {
+		return fmt.Errorf("failed to delete task: %s", resp.String())
+	}
+
+	return nil
+}
+
 func (c *Client) CompleteTask(projectID, taskID string) error {
 	resp, err := c.http.R().
 		Post(fmt.Sprintf("/project/%s/task/%s/complete", projectID, taskID))

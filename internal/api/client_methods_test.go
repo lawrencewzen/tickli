@@ -1,6 +1,7 @@
 package api
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -129,6 +130,89 @@ func TestCreateTask(t *testing.T) {
 		}
 		if got.ID != "generated-id" {
 			t.Errorf("ID = %q, want generated-id", got.ID)
+		}
+	})
+}
+
+func TestUpdateTask(t *testing.T) {
+	t.Run("nil task is rejected without a request", func(t *testing.T) {
+		called := false
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			called = true
+		}))
+		defer srv.Close()
+
+		if _, err := newTestClient(srv.URL).UpdateTask(nil); err == nil {
+			t.Fatal("expected error for nil task")
+		}
+		if called {
+			t.Error("server should not be called for nil task")
+		}
+	})
+
+	t.Run("posts to /task/{id} with id and projectId in body", func(t *testing.T) {
+		var body []byte
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodPost || r.URL.Path != "/task/tid" {
+				t.Errorf("got %s %s, want POST /task/tid", r.Method, r.URL.Path)
+			}
+			body, _ = io.ReadAll(r.Body)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"id":"tid","projectId":"pid","title":"renamed"}`))
+		}))
+		defer srv.Close()
+
+		got, err := newTestClient(srv.URL).UpdateTask(&types.Task{ID: "tid", ProjectID: "pid", Title: "renamed"})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got.Title != "renamed" {
+			t.Errorf("Title = %q, want renamed", got.Title)
+		}
+		// The projectId must reach the API non-empty, otherwise TickTick creates a
+		// duplicate task instead of updating the existing one.
+		for _, want := range []string{`"id":"tid"`, `"projectId":"pid"`} {
+			if !strings.Contains(string(body), want) {
+				t.Errorf("request body %s missing %s", body, want)
+			}
+		}
+	})
+
+	t.Run("server error", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+		}))
+		defer srv.Close()
+
+		if _, err := newTestClient(srv.URL).UpdateTask(&types.Task{ID: "tid", ProjectID: "pid"}); err == nil {
+			t.Fatal("expected error on 400 response")
+		}
+	})
+}
+
+func TestDeleteTask(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodDelete || r.URL.Path != "/project/pid/task/tid" {
+				t.Errorf("got %s %s, want DELETE /project/pid/task/tid", r.Method, r.URL.Path)
+			}
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer srv.Close()
+
+		if err := newTestClient(srv.URL).DeleteTask("pid", "tid"); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("server error", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer srv.Close()
+
+		if err := newTestClient(srv.URL).DeleteTask("pid", "tid"); err == nil {
+			t.Fatal("expected error on 404 response")
 		}
 	})
 }

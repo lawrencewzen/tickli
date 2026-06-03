@@ -62,10 +62,12 @@ tickli task complete <task-id>
 | `tickli init`          | Set up authentication with TickTick |
 | `tickli project list`  | Show all your projects              |
 | `tickli project use`   | Switch active project context       |
-| `tickli add`           | Quickly add a new task              |
+| `tickli task create`   | Create a new task                   |
 | `tickli task list`     | List tasks in current project       |
 | `tickli task show`     | View task details                   |
+| `tickli task update`   | Update fields of an existing task   |
 | `tickli task complete` | Mark a task as complete             |
+| `tickli task delete`   | Delete a task                       |
 
 ## Interactive TUI Experience (Coming Soon!)
 
@@ -73,7 +75,7 @@ tickli task complete <task-id>
 
 ## Roadmap 🗺️
 
-- [x] Basic task management
+- [x] Basic task management (create, list, show, update, complete, delete)
 - [x] Project management
 - [x] Authentication
 - [x] Advanced date/time handling and timezone support
